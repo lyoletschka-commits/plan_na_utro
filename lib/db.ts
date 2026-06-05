@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { randomBytes } from 'crypto';
 import { env } from './env';
 import type { ParsedTask } from './llm';
 
@@ -58,4 +59,54 @@ export async function clearTodayTasks(userId: number): Promise<void> {
     .eq('user_id', userId)
     .eq('day', todayDate());
   if (error) throw new Error(`clearTodayTasks: ${JSON.stringify(error)}`);
+}
+
+// ── Auth sessions (deep-link вход) ───────────────────────────────────────────
+
+export async function createAuthSession(): Promise<string> {
+  const token = randomBytes(16).toString('hex');
+  const supabase = getClient();
+  const { error } = await supabase.from('auth_sessions').insert({ token });
+  if (error) throw new Error(`createAuthSession: ${JSON.stringify(error)}`);
+  return token;
+}
+
+export async function claimAuthSession(
+  token: string,
+  userId: number,
+  firstName: string,
+  username: string,
+): Promise<boolean> {
+  const supabase = getClient();
+  const { data, error } = await supabase
+    .from('auth_sessions')
+    .update({ user_id: userId, first_name: firstName, username })
+    .eq('token', token)
+    .is('user_id', null)
+    .gt('expires_at', new Date().toISOString())
+    .select()
+    .single();
+  if (error || !data) return false;
+  return true;
+}
+
+export interface AuthSessionResult {
+  user_id: number;
+  first_name: string;
+  username: string;
+}
+
+export async function checkAuthSession(token: string): Promise<AuthSessionResult | null> {
+  const supabase = getClient();
+  const { data, error } = await supabase
+    .from('auth_sessions')
+    .select('user_id, first_name, username')
+    .eq('token', token)
+    .not('user_id', 'is', null)
+    .gt('expires_at', new Date().toISOString())
+    .single();
+  if (error || !data?.user_id) return null;
+  // Удаляем сессию после использования
+  await supabase.from('auth_sessions').delete().eq('token', token);
+  return data as AuthSessionResult;
 }

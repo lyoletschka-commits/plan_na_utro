@@ -1,12 +1,12 @@
 import { sendMessage, getFile } from './telegram';
 import { transcribeAudio } from './transcribe';
 import { parseTasks } from './llm';
-import { saveTasks, getTodayTasks, markDone, clearTodayTasks } from './db';
+import { saveTasks, getTodayTasks, markDone, clearTodayTasks, claimAuthSession } from './db';
 import { formatTaskList } from './format';
 
 interface TelegramMessage {
   chat: { id: number };
-  from?: { id: number };
+  from?: { id: number; first_name?: string; username?: string };
   text?: string;
   voice?: { file_id: string };
   audio?: { file_id: string };
@@ -19,7 +19,22 @@ export async function handleMessage(msg: TelegramMessage): Promise<void> {
   try {
     const text = msg.text ?? '';
 
-    if (text === '/start') {
+    if (text.startsWith('/start')) {
+      const param = text.split(' ')[1] ?? '';
+      // Deep-link авторизация с сайта: /start auth_TOKEN
+      if (param.startsWith('auth_')) {
+        const token = param.slice(5);
+        const firstName = msg.from?.first_name ?? '';
+        const username = msg.from?.username ?? '';
+        const ok = await claimAuthSession(token, userId, firstName, username);
+        if (ok) {
+          await sendMessage(chatId, '✅ Вход выполнен! Вернись на сайт — ты уже авторизована.');
+        } else {
+          await sendMessage(chatId, '❌ Ссылка устарела или уже использована. Запроси новую на сайте.');
+        }
+        return;
+      }
+      // Обычный /start
       await sendMessage(chatId,
         'Привет! Я бот утреннего планирования 🌅\n\n' +
         'Расскажи мне голосом или текстом, что планируешь на сегодня — я разберу задачи и сохраню их.\n\n' +

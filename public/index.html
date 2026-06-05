@@ -261,24 +261,51 @@
       <div class="l-title">Утренний план</div>
       <div class="l-sub" style="margin-top:8px">Голосом или текстом — разберу твой день и сохраню задачи</div>
     </div>
-    <div id="tg-wrap"><div style="color:var(--text3);font-size:14px">Загружаю виджет…</div></div>
+    <!-- Шаг 1: кнопка старта -->
+    <div id="step-start">
+      <button onclick="startAuth()" style="
+        display:flex;align-items:center;gap:10px;
+        background:#2481cc;color:#fff;border:none;cursor:pointer;
+        padding:14px 28px;border-radius:14px;font-size:16px;font-weight:600;
+        font-family:inherit;
+        box-shadow:0 4px 20px rgba(36,129,204,.4);
+        transition:transform .15s ease;
+      " onmousedown="this.style.transform='scale(.97)'"
+         onmouseup="this.style.transform=''"
+         ontouchstart="this.style.transform='scale(.97)'"
+         ontouchend="this.style.transform=''">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.94 8.19l-2.02 9.52c-.15.67-.54.83-1.09.52l-3-2.21-1.45 1.39c-.16.16-.3.3-.61.3l.22-3.08 5.6-5.06c.24-.22-.05-.34-.38-.12L6.27 14.4l-2.97-.93c-.64-.2-.66-.64.14-.95l11.6-4.47c.53-.2 1 .13.9.14z"/>
+        </svg>
+        Войти через Telegram
+      </button>
+    </div>
 
-    <!-- Кнопка-резерв: OAuth-редирект (работает всегда) -->
-    <a id="tg-btn" href="#" onclick="telegramRedirect()" style="
-      display:none;align-items:center;gap:10px;
-      background:#2481cc;color:#fff;text-decoration:none;
-      padding:13px 24px;border-radius:14px;font-size:16px;font-weight:600;
-      box-shadow:0 4px 20px rgba(36,129,204,.4);
-      transition:transform .15s ease,opacity .15s ease;
-    " onmousedown="this.style.transform='scale(.97)'"
-       onmouseup="this.style.transform=''"
-       ontouchstart="this.style.transform='scale(.97)'"
-       ontouchend="this.style.transform=''">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.94 8.19l-2.02 9.52c-.15.67-.54.83-1.09.52l-3-2.21-1.45 1.39c-.16.16-.3.3-.61.3l.22-3.08 5.6-5.06c.24-.22-.05-.34-.38-.12L6.27 14.4l-2.97-.93c-.64-.2-.66-.64.14-.95l11.6-4.47c.53-.2 1 .13.9.14z"/>
-      </svg>
-      Войти через Telegram
-    </a>
+    <!-- Шаг 2: ожидание подтверждения -->
+    <div id="step-wait" style="display:none;flex-direction:column;align-items:center;gap:16px;width:100%;max-width:300px">
+      <div style="font-size:15px;color:var(--text2);text-align:center;line-height:1.6">
+        Нажми кнопку ниже — откроется бот.<br>Подтверди вход одним сообщением.
+      </div>
+      <a id="deeplink-btn" href="#" target="_blank" style="
+        display:flex;align-items:center;gap:10px;
+        background:#2481cc;color:#fff;text-decoration:none;
+        padding:13px 24px;border-radius:14px;font-size:15px;font-weight:600;
+        box-shadow:0 4px 16px rgba(36,129,204,.35);width:100%;justify-content:center;
+      ">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.94 8.19l-2.02 9.52c-.15.67-.54.83-1.09.52l-3-2.21-1.45 1.39c-.16.16-.3.3-.61.3l.22-3.08 5.6-5.06c.24-.22-.05-.34-.38-.12L6.27 14.4l-2.97-.93c-.64-.2-.66-.64.14-.95l11.6-4.47c.53-.2 1 .13.9.14z"/>
+        </svg>
+        Открыть @plan_na_utro_bot
+      </a>
+      <div style="display:flex;align-items:center;gap:8px;color:var(--text3);font-size:13px">
+        <span class="spin" style="width:14px;height:14px;border-width:2px"></span>
+        Жду подтверждения…
+      </div>
+      <button onclick="cancelAuth()" style="
+        background:none;border:none;color:var(--text3);font-size:13px;
+        cursor:pointer;font-family:inherit;padding:4px 8px
+      ">Отмена</button>
+    </div>
 
     <div class="l-hint">Твои задачи синхронизируются с ботом <strong>@plan_na_utro_bot</strong></div>
   </div>
@@ -355,17 +382,6 @@
 
 <div class="toast" id="toast"></div>
 
-<!-- Telegram Login Widget -->
-<script>
-  function onTelegramAuth(u) { doAuth(u); }
-</script>
-<script async src="https://telegram.org/js/telegram-widget.js?22"
-  data-telegram-login="plan_na_utro_bot"
-  data-size="large"
-  data-radius="12"
-  data-onauth="onTelegramAuth(user)"
-  data-request-access="write">
-</script>
 
 <script>
 'use strict';
@@ -379,35 +395,59 @@ let mr = null, chunks = [], recTmr = null, recSec = 0, busy = false;
 // ─── Инит ────────────────────────────────────────────
 window.addEventListener('load', () => {
   setGreeting(); setDate();
-
-  // Обработка OAuth-редиректа от Telegram
-  const params = new URLSearchParams(location.search);
-  const tgResult = params.get('tgAuthResult');
-  if (tgResult) {
-    history.replaceState({}, '', location.pathname); // убираем параметр из URL
-    try {
-      const userData = JSON.parse(atob(tgResult.replace(/-/g,'+').replace(/_/g,'/')));
-      doAuth(userData);
-    } catch(e) { toast('Ошибка обработки данных Telegram'); }
-    return;
-  }
-
-  if (TOKEN && USER) { showMain(); return; }
-
-  // Если виджет не появился за 5 сек — показываем кнопку-резерв
-  setTimeout(() => {
-    const w = document.getElementById('tg-wrap');
-    if (!w.querySelector('iframe')) {
-      w.style.display = 'none';
-      document.getElementById('tg-btn').style.display = 'flex';
-    }
-  }, 5000);
+  if (TOKEN && USER) showMain();
 });
 
-function telegramRedirect() {
-  const origin = encodeURIComponent(location.origin);
-  const ret = encodeURIComponent(location.href);
-  location.href = `https://oauth.telegram.org/auth?bot_id=8811530332&origin=${origin}&return_to=${ret}`;
+// ─── Deep-link авторизация ────────────────────────────────
+let pollTimer = null;
+let currentAuthToken = null;
+
+async function startAuth() {
+  try {
+    const r = await fetch('/api/auth-session', { method: 'POST' });
+    const d = await r.json();
+    if (!d.token) throw new Error('no token');
+    currentAuthToken = d.token;
+
+    // Показываем шаг 2
+    document.getElementById('step-start').style.display = 'none';
+    const stepWait = document.getElementById('step-wait');
+    stepWait.style.display = 'flex';
+
+    // Deep link в бота
+    document.getElementById('deeplink-btn').href =
+      `https://t.me/plan_na_utro_bot?start=auth_${d.token}`;
+
+    // Поллинг каждые 2 сек
+    pollTimer = setInterval(pollAuth, 2000);
+  } catch(e) {
+    toast('Ошибка: ' + e.message);
+  }
+}
+
+async function pollAuth() {
+  if (!currentAuthToken) return;
+  try {
+    const r = await fetch('/api/auth-session?token=' + currentAuthToken);
+    const d = await r.json();
+    if (d.pending) return; // ещё не подтверждено
+    if (d.token) {
+      clearInterval(pollTimer);
+      TOKEN = d.token;
+      USER = d.user;
+      localStorage.setItem('tok', TOKEN);
+      localStorage.setItem('usr', JSON.stringify(USER));
+      toast('✅ Вход выполнен!');
+      showMain();
+    }
+  } catch {}
+}
+
+function cancelAuth() {
+  clearInterval(pollTimer);
+  currentAuthToken = null;
+  document.getElementById('step-wait').style.display = 'none';
+  document.getElementById('step-start').style.display = 'block';
 }
 
 function setGreeting() {
