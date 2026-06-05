@@ -57,6 +57,20 @@ export async function getWeekTasks(userId: number, weekDays: string[]): Promise<
   return (data ?? []) as Task[];
 }
 
+export async function getTasksRange(userId: number, from: string, to: string): Promise<Task[]> {
+  const supabase = getClient();
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('user_id', userId)
+    .gte('day', from)
+    .lte('day', to)
+    .order('day', { ascending: true })
+    .order('time', { ascending: true, nullsFirst: false });
+  if (error) throw new Error(`getTasksRange: ${JSON.stringify(error)}`);
+  return (data ?? []) as Task[];
+}
+
 export async function markDone(userId: number, taskNum: number, day?: string): Promise<boolean> {
   const tasks = await getTasksByDay(userId, day ?? todayDate());
   const task = tasks[taskNum - 1];

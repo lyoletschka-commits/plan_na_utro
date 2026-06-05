@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { verifyToken } from '../lib/jwt';
-import { getTasksByDay, getWeekTasks, saveTasks, markDone, clearTodayTasks, todayDate } from '../lib/db';
+import { getTasksByDay, getWeekTasks, getTasksRange, saveTasks, markDone, clearTodayTasks, todayDate } from '../lib/db';
 import { parseTasks } from '../lib/llm';
 import { transcribeBuffer } from '../lib/transcribe';
 
@@ -26,11 +26,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     if (req.method === 'GET') {
-      // ?week=true — задачи за неделю, иначе за конкретный день
-      if (req.query.week === 'true') {
+      // ?year=YYYY — все задачи за год (для метаданных календаря)
+      if (req.query.year) {
+        const year = req.query.year as string;
+        if (!/^\d{4}$/.test(year)) { res.status(400).json({ error: 'Invalid year' }); return; }
+        const tasks = await getTasksRange(userId, `${year}-01-01`, `${year}-12-31`);
+        res.json({ tasks });
+
+      // ?week=true&days=d1,d2,...
+      } else if (req.query.week === 'true') {
         const weekDays = (req.query.days as string ?? '').split(',').filter(Boolean);
         const tasks = weekDays.length ? await getWeekTasks(userId, weekDays) : [];
         res.json({ tasks });
+
+      // ?day=YYYY-MM-DD (default: today)
       } else {
         const day = validateDay(req.query.day);
         const tasks = await getTasksByDay(userId, day);
@@ -48,7 +57,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       if (!input.trim()) { res.status(400).json({ error: 'Нет данных' }); return; }
-
       const parsed = await parseTasks(input);
       if (parsed.length === 0) { res.status(422).json({ error: 'Задачи не найдены' }); return; }
       await saveTasks(userId, parsed, day);
