@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { verifyToken } from '../lib/jwt';
-import { getTasksByDay, getWeekTasks, getTasksRange, saveTasks, markDone, clearTodayTasks, todayDate } from '../lib/db';
+import { getTasksByDay, getWeekTasks, getTasksRange, saveTasks, markDone, clearTodayTasks, deleteTask, todayDate } from '../lib/db';
 import { parseTasks } from '../lib/llm';
 import { transcribeBuffer } from '../lib/transcribe';
 
@@ -70,9 +70,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.json({ tasks });
 
     } else if (req.method === 'DELETE') {
+      const taskId = req.query.taskId ? parseInt(req.query.taskId as string) : null;
       const day = validateDay(req.query.day);
-      await clearTodayTasks(userId, day);
-      res.json({ tasks: [] });
+      if (taskId) {
+        await deleteTask(userId, taskId);
+      } else {
+        await clearTodayTasks(userId, day);
+      }
+      const tasks = await getTasksByDay(userId, day);
+      res.json({ tasks });
 
     } else {
       res.status(405).json({ error: 'Method not allowed' });

@@ -81,6 +81,22 @@ export async function markDone(userId: number, taskNum: number, day?: string): P
   return true;
 }
 
+export async function deleteTask(userId: number, taskId: number): Promise<void> {
+  const supabase = getClient();
+  const { error } = await supabase.from('tasks').delete()
+    .eq('id', taskId).eq('user_id', userId);
+  if (error) throw new Error(`deleteTask: ${JSON.stringify(error)}`);
+}
+
+export async function getUsersWithTasksToday(): Promise<number[]> {
+  const supabase = getClient();
+  const { data, error } = await supabase
+    .from('tasks').select('user_id')
+    .eq('day', todayDate()).eq('done', false);
+  if (error) throw new Error(`getUsersWithTasksToday: ${JSON.stringify(error)}`);
+  return [...new Set((data ?? []).map(r => r.user_id as number))];
+}
+
 export async function clearTodayTasks(userId: number, day?: string): Promise<void> {
   const supabase = getClient();
   const { error } = await supabase

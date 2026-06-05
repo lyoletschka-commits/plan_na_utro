@@ -1,7 +1,12 @@
 {
   "functions": {
-    "api/telegram.ts": {
-      "maxDuration": 30
-    }
-  }
+    "api/telegram.ts": { "maxDuration": 30 },
+    "api/tasks.ts":    { "maxDuration": 30 },
+    "api/cron.ts":     { "maxDuration": 30 }
+  },
+  "crons": [
+    { "path": "/api/cron", "schedule": "0 7 * * *" },
+    { "path": "/api/cron", "schedule": "0 10 * * *" },
+    { "path": "/api/cron", "schedule": "0 13 * * *" }
+  ]
 }
