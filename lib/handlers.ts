@@ -1,4 +1,4 @@
-import { sendMessage, getFile } from './telegram';
+import { sendMessage, getFile, WEBSITE_KEYBOARD } from './telegram';
 import { transcribeAudio } from './transcribe';
 import { parseTasks } from './llm';
 import { saveTasks, getAffectedDays, getTasksByDay, getTodayTasks, markDone, clearTodayTasks, claimAuthSession, todayDate } from './db';
@@ -37,11 +37,14 @@ export async function handleMessage(msg: TelegramMessage): Promise<void> {
       // Обычный /start
       await sendMessage(chatId,
         'Привет! Я бот утреннего планирования 🌅\n\n' +
-        'Расскажи мне голосом или текстом, что планируешь на сегодня — я разберу задачи и сохраню их.\n\n' +
+        'Расскажи голосом или текстом, что планируешь — я разберу задачи по дням и сохраню их.\n\n' +
         'Команды:\n' +
         '/today — список задач на сегодня\n' +
         '/done <номер> — отметить задачу выполненной\n' +
-        '/clear — очистить список на сегодня'
+        '/clear — очистить список на сегодня\n\n' +
+        'На сайте доступен полный календарь с недельным и месячным видом 👇',
+        undefined,
+        WEBSITE_KEYBOARD,
       );
       return;
     }

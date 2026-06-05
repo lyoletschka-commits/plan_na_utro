@@ -2,11 +2,16 @@ import { env } from './env';
 
 const BASE = `https://api.telegram.org/bot${env.TELEGRAM_TOKEN}`;
 
-export async function sendMessage(chatId: number, text: string, parseMode?: string): Promise<void> {
-  // Обрезаем длинные сообщения и снимаем parse_mode во избежание HTML-ошибок
+export async function sendMessage(
+  chatId: number,
+  text: string,
+  parseMode?: string,
+  replyMarkup?: Record<string, unknown>,
+): Promise<void> {
   const safeText = text.length > 1000 ? text.slice(0, 997) + '...' : text;
   const body: Record<string, unknown> = { chat_id: chatId, text: safeText };
   if (parseMode && safeText.length <= 1000) body.parse_mode = parseMode;
+  if (replyMarkup) body.reply_markup = replyMarkup;
 
   const res = await fetch(`${BASE}/sendMessage`, {
     method: 'POST',
@@ -18,6 +23,13 @@ export async function sendMessage(chatId: number, text: string, parseMode?: stri
     console.error('sendMessage error:', err);
   }
 }
+
+// Кнопка с ссылкой на сайт
+export const WEBSITE_KEYBOARD = {
+  inline_keyboard: [[
+    { text: '🌐 Открыть сайт', url: 'https://plan-na-utro.vercel.app' },
+  ]],
+};
 
 export async function getFile(fileId: string): Promise<string> {
   const res = await fetch(`${BASE}/getFile?file_id=${fileId}`);
