@@ -17,32 +17,48 @@ function getClient() {
   return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 }
 
-function todayDate(): string {
+export function todayDate(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-export async function saveTasks(userId: number, tasks: ParsedTask[]): Promise<void> {
+export async function saveTasks(userId: number, tasks: ParsedTask[], day?: string): Promise<void> {
   const supabase = getClient();
-  const day = todayDate();
-  const rows = tasks.map(t => ({ user_id: userId, text: t.text, time: t.time ?? null, day, done: false }));
+  const d = day ?? todayDate();
+  const rows = tasks.map(t => ({ user_id: userId, text: t.text, time: t.time ?? null, day: d, done: false }));
   const { error } = await supabase.from('tasks').insert(rows);
   if (error) throw new Error(`saveTasks: ${JSON.stringify(error)}`);
 }
 
 export async function getTodayTasks(userId: number): Promise<Task[]> {
+  return getTasksByDay(userId, todayDate());
+}
+
+export async function getTasksByDay(userId: number, day: string): Promise<Task[]> {
   const supabase = getClient();
   const { data, error } = await supabase
     .from('tasks')
     .select('*')
     .eq('user_id', userId)
-    .eq('day', todayDate())
+    .eq('day', day)
     .order('time', { ascending: true, nullsFirst: false });
-  if (error) throw new Error(`getTodayTasks: ${JSON.stringify(error)}`);
+  if (error) throw new Error(`getTasksByDay: ${JSON.stringify(error)}`);
   return (data ?? []) as Task[];
 }
 
-export async function markDone(userId: number, taskNum: number): Promise<boolean> {
-  const tasks = await getTodayTasks(userId);
+export async function getWeekTasks(userId: number, weekDays: string[]): Promise<Task[]> {
+  const supabase = getClient();
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('user_id', userId)
+    .in('day', weekDays)
+    .order('time', { ascending: true, nullsFirst: false });
+  if (error) throw new Error(`getWeekTasks: ${JSON.stringify(error)}`);
+  return (data ?? []) as Task[];
+}
+
+export async function markDone(userId: number, taskNum: number, day?: string): Promise<boolean> {
+  const tasks = await getTasksByDay(userId, day ?? todayDate());
   const task = tasks[taskNum - 1];
   if (!task) return false;
   const supabase = getClient();
@@ -51,13 +67,13 @@ export async function markDone(userId: number, taskNum: number): Promise<boolean
   return true;
 }
 
-export async function clearTodayTasks(userId: number): Promise<void> {
+export async function clearTodayTasks(userId: number, day?: string): Promise<void> {
   const supabase = getClient();
   const { error } = await supabase
     .from('tasks')
     .delete()
     .eq('user_id', userId)
-    .eq('day', todayDate());
+    .eq('day', day ?? todayDate());
   if (error) throw new Error(`clearTodayTasks: ${JSON.stringify(error)}`);
 }
 
