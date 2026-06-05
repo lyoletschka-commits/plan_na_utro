@@ -360,19 +360,28 @@ let mr=null, chunks=[], recTmr=null, recSec=0, busy=false;
 let pollTimer=null, authToken=null;
 
 /* ═══════════ DATE UTILS ═══════════ */
-function todayStr(){return new Date().toISOString().slice(0,10)}
+
+// Форматируем дату как YYYY-MM-DD в LOCAL timezone (не UTC!)
+function localDateStr(d){
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  const day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+function todayStr(){ return localDateStr(new Date()); }
 
 function getWeekStart(d){
   const dt=new Date(d+'T12:00:00');
   const diff=(dt.getDay()+6)%7;
   dt.setDate(dt.getDate()-diff);
-  return dt.toISOString().slice(0,10);
+  return localDateStr(dt);
 }
 
 function addDays(d,n){
   const dt=new Date(d+'T12:00:00');
   dt.setDate(dt.getDate()+n);
-  return dt.toISOString().slice(0,10);
+  return localDateStr(dt);
 }
 
 function getWeekDays(ws){
@@ -398,25 +407,26 @@ function monthStr(ym){ // YYYY-MM → 'Июнь 2026'
 
 function monthDays(ym){ // все дни месяца + отступы из соседних
   const [y,m]=ym.split('-').map(Number);
-  const first=new Date(y,m-1,1);
-  const last=new Date(y,m,0);
+  // Используем 12:00 чтобы избежать проблем с летним временем
+  const first=new Date(y,m-1,1,12,0,0);
+  const lastDay=new Date(y,m,0).getDate();
   const startDow=(first.getDay()+6)%7; // 0=Пн
   const days=[];
   // предыдущий месяц
-  for(let i=startDow-1;i>=0;i--){
-    const d=new Date(y,m-1,-i);
-    days.push({str:d.toISOString().slice(0,10),cur:false});
+  for(let i=startDow;i>0;i--){
+    const dt=new Date(y,m-1,1-i,12,0,0);
+    days.push({str:localDateStr(dt),cur:false});
   }
   // текущий месяц
-  for(let d=1;d<=last.getDate();d++){
-    const dt=new Date(y,m-1,d);
-    days.push({str:dt.toISOString().slice(0,10),cur:true});
+  for(let d=1;d<=lastDay;d++){
+    const dt=new Date(y,m-1,d,12,0,0);
+    days.push({str:localDateStr(dt),cur:true});
   }
   // следующий месяц
   const rem=(7-days.length%7)%7;
   for(let i=1;i<=rem;i++){
-    const dt=new Date(y,m,i);
-    days.push({str:dt.toISOString().slice(0,10),cur:false});
+    const dt=new Date(y,m,i,12,0,0);
+    days.push({str:localDateStr(dt),cur:false});
   }
   return days;
 }
