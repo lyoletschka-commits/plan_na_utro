@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Утренний план</title>
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+
+    :root{
+      --bg:#000;
+      --bg2:#1c1c1e;
+      --bg3:#2c2c2e;
+      --card:rgba(255,255,255,.07);
+      --card-b:rgba(255,255,255,.11);
+      --blue:#0a84ff;
+      --green:#30d158;
+      --red:#ff453a;
+      --text:#fff;
+      --text2:rgba(235,235,245,.6);
+      --text3:rgba(235,235,245,.28);
+      --sep:rgba(255,255,255,.08);
+      --st:env(safe-area-inset-top,0px);
+      --sb:env(safe-area-inset-bottom,0px);
+    }
+
+    html,body{height:100%;background:var(--bg);color:var(--text);
+      font-family:-apple-system,'SF Pro Display','Helvetica Neue',sans-serif;
+      overflow:hidden;-webkit-font-smoothing:antialiased}
+
+    #app{height:100%;display:flex;flex-direction:column}
+
+    /* ── ЭКРАН ВХОДА ── */
+    #login{
+      flex:1;display:flex;flex-direction:column;align-items:center;
+      justify-content:center;gap:28px;padding:40px 32px;
+      background:radial-gradient(ellipse 80% 60% at 50% 0%,#0d2445 0%,#000 70%);
+    }
+
+    .l-icon{
+      width:100px;height:100px;
+      background:linear-gradient(145deg,#0a5aff,#5e5ce6 60%,#bf5af2);
+      border-radius:30px;display:flex;align-items:center;justify-content:center;
+      font-size:52px;
+      box-shadow:0 0 0 1px rgba(255,255,255,.12),0 24px 64px rgba(10,84,255,.45);
+    }
+
+    .l-title{font-size:30px;font-weight:700;letter-spacing:-.5px;text-align:center}
+    .l-sub{font-size:15px;color:var(--text2);text-align:center;line-height:1.55;max-width:280px}
+
+    #tg-wrap{display:flex;align-items:center;justify-content:center;min-height:56px}
+
+    .l-hint{font-size:13px;color:var(--text3);text-align:center;max-width:260px;line-height:1.5}
+
+    /* ── ГЛАВНЫЙ ЭКРАН ── */
+    #main{flex:1;display:none;flex-direction:column;overflow:hidden}
+
+    /* Шапка */
+    .hdr{
+      padding:calc(var(--st) + 18px) 20px 0;
+      display:flex;align-items:center;justify-content:space-between
+    }
+
+    .hdr-left{}
+    .hdr-greet{font-size:13px;color:var(--text2);font-weight:400}
+    .hdr-name{font-size:22px;font-weight:700;letter-spacing:-.3px;margin-top:2px}
+
+    .hdr-right{display:flex;align-items:center;gap:10px}
+
+    .date-pill{
+      background:var(--card);border:1px solid var(--card-b);border-radius:20px;
+      padding:6px 13px;font-size:12px;color:var(--text2);
+      backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+      white-space:nowrap
+    }
+
+    .avatar{
+      width:38px;height:38px;border-radius:50%;overflow:hidden;
+      background:var(--bg3);display:flex;align-items:center;justify-content:center;
+      font-size:17px;flex-shrink:0;border:1.5px solid var(--card-b)
+    }
+    .avatar img{width:100%;height:100%;object-fit:cover}
+
+    /* Прогресс */
+    .progress{
+      padding:16px 20px 10px;display:flex;align-items:center;gap:18px
+    }
+
+    .ring-wrap{position:relative;width:76px;height:76px;flex-shrink:0}
+    .ring-wrap svg{transform:rotate(-90deg)}
+    .r-bg{fill:none;stroke:var(--bg3);stroke-width:6}
+    .r-fg{
+      fill:none;stroke:var(--blue);stroke-width:6;stroke-linecap:round;
+      transition:stroke-dashoffset .7s cubic-bezier(.34,1.56,.64,1),stroke .4s ease
+    }
+    .ring-inner{
+      position:absolute;inset:0;display:flex;flex-direction:column;
+      align-items:center;justify-content:center
+    }
+    .r-num{font-size:19px;font-weight:700;line-height:1}
+    .r-total{font-size:10px;color:var(--text2);margin-top:1px}
+
+    .prog-info{flex:1}
+    .prog-title{font-size:20px;font-weight:600;letter-spacing:-.3px}
+    .prog-sub{font-size:13px;color:var(--text2);margin-top:4px}
+
+    /* Список задач */
+    .scroll{
+      flex:1;overflow-y:auto;padding:4px 14px 8px;
+      -webkit-overflow-scrolling:touch;
+    }
+    .scroll::-webkit-scrollbar{display:none}
+
+    .sec-hdr{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:4px 4px 8px
+    }
+    .sec-title{font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.6px}
+    .clr-btn{
+      background:none;border:none;color:var(--text3);font-size:13px;
+      cursor:pointer;padding:3px 8px;border-radius:8px;
+      transition:color .2s;font-family:inherit
+    }
+    .clr-btn:hover{color:var(--red)}
+
+    .task{
+      background:var(--card);border:1px solid var(--card-b);border-radius:16px;
+      padding:13px 15px;margin-bottom:8px;display:flex;align-items:center;gap:12px;
+      backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+      transition:transform .15s ease,opacity .35s ease;
+      cursor:pointer;user-select:none;
+      animation:slideIn .3s cubic-bezier(.34,1.56,.64,1) both
+    }
+    @keyframes slideIn{
+      from{opacity:0;transform:translateY(12px) scale(.97)}
+      to{opacity:1;transform:none}
+    }
+    .task:active{transform:scale(.98)}
+    .task.done{opacity:.45}
+    .task.done .t-text{text-decoration:line-through;color:var(--text2)}
+
+    .cb{
+      width:24px;height:24px;border-radius:50%;
+      border:2px solid var(--text3);flex-shrink:0;
+      display:flex;align-items:center;justify-content:center;
+      transition:all .22s cubic-bezier(.34,1.56,.64,1)
+    }
+    .task.done .cb{background:var(--green);border-color:var(--green)}
+    .cb svg{opacity:0;transform:scale(0);transition:all .22s cubic-bezier(.34,1.56,.64,1)}
+    .task.done .cb svg{opacity:1;transform:scale(1)}
+
+    .t-body{flex:1;min-width:0}
+    .t-text{font-size:15px;font-weight:500;line-height:1.35;transition:color .2s}
+    .t-time{font-size:12px;color:var(--blue);font-weight:600;margin-top:3px}
+
+    .empty{text-align:center;padding:56px 32px}
+    .empty .ico{font-size:52px;margin-bottom:14px}
+    .empty .et{font-size:17px;font-weight:600;margin-bottom:6px}
+    .empty .es{font-size:14px;color:var(--text2);line-height:1.5}
+
+    /* Нижний бар */
+    .bar{
+      padding:10px 14px calc(var(--sb) + 10px);
+      background:rgba(0,0,0,.82);
+      backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);
+      border-top:1px solid var(--sep)
+    }
+
+    .rec-bar{
+      display:none;align-items:center;gap:10px;
+      padding:8px 12px;background:rgba(255,69,58,.13);
+      border-radius:12px;margin-bottom:8px;border:1px solid rgba(255,69,58,.2)
+    }
+    .rec-bar.on{display:flex}
+    .rec-dot{width:7px;height:7px;border-radius:50%;background:var(--red);
+      animation:blink 1s ease infinite}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+    .rec-txt{font-size:13px;color:var(--red);font-weight:600;flex:1}
+    .rec-time{font-size:13px;color:var(--red);font-variant-numeric:tabular-nums}
+    .rec-stop{
+      background:rgba(255,69,58,.25);border:none;border-radius:8px;
+      color:var(--red);font-size:12px;font-weight:600;
+      padding:4px 10px;cursor:pointer;font-family:inherit
+    }
+
+    .inp-row{display:flex;gap:9px;align-items:flex-end}
+
+    .mic{
+      width:42px;height:42px;border-radius:50%;background:var(--bg3);
+      border:none;display:flex;align-items:center;justify-content:center;
+      cursor:pointer;flex-shrink:0;color:var(--text2);
+      transition:all .2s cubic-bezier(.34,1.56,.64,1);position:relative
+    }
+    .mic.on{background:var(--red);color:#fff;transform:scale(1.08)}
+    .mic.on::after{
+      content:'';position:absolute;inset:-7px;border-radius:50%;
+      border:2px solid var(--red);
+      animation:ring 1.2s ease-out infinite
+    }
+    @keyframes ring{0%{opacity:.7;transform:scale(1)}100%{opacity:0;transform:scale(1.6)}}
+
+    .inp-wrap{
+      flex:1;background:var(--bg3);border-radius:20px;
+      padding:10px 15px;display:flex;align-items:flex-end;gap:8px;
+      transition:background .2s
+    }
+    .inp-wrap:focus-within{background:#333335}
+
+    #tinp{
+      flex:1;background:none;border:none;outline:none;color:var(--text);
+      font-size:15px;font-family:inherit;resize:none;
+      max-height:120px;line-height:1.45;min-height:22px
+    }
+    #tinp::placeholder{color:var(--text3)}
+
+    .send{
+      width:28px;height:28px;border-radius:50%;background:var(--blue);
+      border:none;display:flex;align-items:center;justify-content:center;
+      cursor:pointer;flex-shrink:0;opacity:.3;
+      transition:opacity .2s,transform .15s ease
+    }
+    .send.on{opacity:1}
+    .send:active{transform:scale(.9)}
+
+    /* Тост */
+    .toast{
+      position:fixed;top:calc(var(--st) + 56px);left:50%;
+      transform:translateX(-50%) translateY(-14px);
+      background:rgba(44,44,46,.96);backdrop-filter:blur(24px);
+      border-radius:22px;padding:10px 20px;font-size:14px;font-weight:500;
+      opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);
+      pointer-events:none;white-space:nowrap;z-index:999;
+      border:1px solid var(--sep);max-width:calc(100vw - 40px);
+      text-align:center
+    }
+    .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+    /* Спиннер */
+    .spin{
+      width:18px;height:18px;border:2px solid rgba(255,255,255,.2);
+      border-top-color:#fff;border-radius:50%;animation:rot .75s linear infinite;
+      display:inline-block;vertical-align:middle
+    }
+    @keyframes rot{to{transform:rotate(360deg)}}
+
+    /* Переход login → main */
+    #login{transition:opacity .4s ease}
+    #login.hide{opacity:0;pointer-events:none}
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ВХОД -->
+  <div id="login">
+    <div class="l-icon">🌅</div>
+    <div>
+      <div class="l-title">Утренний план</div>
+      <div class="l-sub" style="margin-top:8px">Голосом или текстом — разберу твой день и сохраню задачи</div>
+    </div>
+    <div id="tg-wrap"><div style="color:var(--text3);font-size:14px">Загружаю виджет входа…</div></div>
+    <div class="l-hint">Твои задачи синхронизируются с ботом <strong>@plan_na_utro_bot</strong></div>
+  </div>
+
+  <!-- ГЛАВНЫЙ -->
+  <div id="main">
+    <div class="hdr">
+      <div class="hdr-left">
+        <div class="hdr-greet" id="greet">Доброе утро,</div>
+        <div class="hdr-name" id="uname">—</div>
+      </div>
+      <div class="hdr-right">
+        <div class="date-pill" id="datepill">сегодня</div>
+        <div class="avatar" id="uavatar">👤</div>
+      </div>
+    </div>
+
+    <div class="progress">
+      <div class="ring-wrap">
+        <svg width="76" height="76" viewBox="0 0 76 76">
+          <circle class="r-bg" cx="38" cy="38" r="32"/>
+          <circle class="r-fg" id="rfg" cx="38" cy="38" r="32"
+            stroke-dasharray="201" stroke-dashoffset="201"/>
+        </svg>
+        <div class="ring-inner">
+          <span class="r-num" id="rdone">0</span>
+          <span class="r-total" id="rtotal">/ 0</span>
+        </div>
+      </div>
+      <div class="prog-info">
+        <div class="prog-title" id="ptitle">Нет задач</div>
+        <div class="prog-sub" id="psub">Расскажи о планах на день</div>
+      </div>
+    </div>
+
+    <div class="scroll">
+      <div class="sec-hdr">
+        <span class="sec-title">Задачи на сегодня</span>
+        <button class="clr-btn" onclick="clearAll()">Очистить</button>
+      </div>
+      <div id="tlist"></div>
+    </div>
+
+    <div class="bar">
+      <div class="rec-bar" id="recbar">
+        <div class="rec-dot"></div>
+        <span class="rec-txt">Запись голоса…</span>
+        <span class="rec-time" id="rectm">0:00</span>
+        <button class="rec-stop" onclick="stopRec()">Стоп</button>
+      </div>
+      <div class="inp-row">
+        <button class="mic" id="micbtn" onclick="toggleRec()" title="Голосовой ввод">
+          <svg width="18" height="22" viewBox="0 0 18 22" fill="currentColor">
+            <rect x="5" y="0" width="8" height="13" rx="4"/>
+            <path d="M1 9c0 4.4 3.6 8 8 8s8-3.6 8-8" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <line x1="9" y1="17" x2="9" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <line x1="6" y1="21" x2="12" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <div class="inp-wrap">
+          <textarea id="tinp" rows="1" placeholder="Что планируешь сегодня?"
+            oninput="onInp(this)" onkeydown="onKD(event)"></textarea>
+          <button class="send" id="sendbtn" onclick="sendText()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M12 20V4M12 4L5 11M12 4L19 11"
+                stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Telegram Login Widget -->
+<script>
+  function onTelegramAuth(u) { doAuth(u); }
+</script>
+<script async src="https://telegram.org/js/telegram-widget.js?22"
+  data-telegram-login="plan_na_utro_bot"
+  data-size="large"
+  data-radius="12"
+  data-onauth="onTelegramAuth(user)"
+  data-request-access="write">
+</script>
+
+<script>
+'use strict';
+
+// ─── Стейт ───────────────────────────────────────────
+let TOKEN = localStorage.getItem('tok') || '';
+let USER  = JSON.parse(localStorage.getItem('usr') || 'null');
+let tasks = [];
+let mr = null, chunks = [], recTmr = null, recSec = 0, busy = false;
+
+// ─── Инит ────────────────────────────────────────────
+window.addEventListener('load', () => {
+  setGreeting(); setDate();
+  if (TOKEN && USER) showMain();
+  else {
+    // Проверим — если виджет не загрузился за 4 сек, покажем сообщение
+    setTimeout(() => {
+      const w = document.getElementById('tg-wrap');
+      if (!w.querySelector('iframe,button')) {
+        w.innerHTML = '<div style="color:var(--text3);font-size:13px;text-align:center">Виджет Telegram не загрузился.<br>Открой <a href="https://t.me/plan_na_utro_bot" style="color:var(--blue)">@plan_na_utro_bot</a> и используй бота.</div>';
+      }
+    }, 4000);
+  }
+});
+
+function setGreeting() {
+  const h = new Date().getHours();
+  document.getElementById('greet').textContent =
+    h < 5 ? 'Доброй ночи,' : h < 12 ? 'Доброе утро,' : h < 17 ? 'Добрый день,' : 'Добрый вечер,';
+}
+
+function setDate() {
+  const d = new Date();
+  const dn = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
+  const mn = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  document.getElementById('datepill').textContent = `${dn[d.getDay()]}, ${d.getDate()} ${mn[d.getMonth()]}`;
+}
+
+// ─── Авторизация ─────────────────────────────────────
+async function doAuth(tgUser) {
+  toast('🔐 Вхожу…');
+  try {
+    const r = await fetch('/api/auth', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(tgUser)
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.status);
+    TOKEN = d.token;
+    USER  = d.user;
+    localStorage.setItem('tok', TOKEN);
+    localStorage.setItem('usr', JSON.stringify(USER));
+    showMain();
+  } catch(e) { toast('Ошибка входа: ' + e.message); }
+}
+
+function showMain() {
+  const login = document.getElementById('login');
+  login.classList.add('hide');
+  setTimeout(() => { login.style.display = 'none'; }, 400);
+
+  const main = document.getElementById('main');
+  main.style.display = 'flex';
+
+  document.getElementById('uname').textContent = USER.first_name || 'Привет!';
+  const av = document.getElementById('uavatar');
+  if (USER.photo_url) av.innerHTML = `<img src="${USER.photo_url}" alt="">`;
+  else av.textContent = (USER.first_name || '?')[0].toUpperCase();
+
+  loadTasks();
+}
+
+// ─── API ──────────────────────────────────────────────
+async function api(method, path, body) {
+  const opts = { method, headers: { Authorization: 'Bearer ' + TOKEN } };
+  if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  const r = await fetch(path, opts);
+  if (r.status === 401) { localStorage.clear(); location.reload(); return null; }
+  return r.json();
+}
+
+async function loadTasks() {
+  const d = await api('GET', '/api/tasks');
+  if (d?.tasks) render(d.tasks);
+}
+
+// ─── Рендер задач ─────────────────────────────────────
+function render(newTasks) {
+  tasks = newTasks;
+  const done = tasks.filter(t => t.done).length;
+  const total = tasks.length;
+  const circ = 201;
+
+  // Кольцо
+  const offset = total ? circ * (1 - done / total) : circ;
+  const ring = document.getElementById('rfg');
+  ring.style.strokeDashoffset = offset;
+  ring.style.stroke = (done === total && total > 0) ? '#30d158' : '#0a84ff';
+  document.getElementById('rdone').textContent = done;
+  document.getElementById('rtotal').textContent = '/ ' + total;
+
+  // Текст прогресса
+  const pt = document.getElementById('ptitle');
+  const ps = document.getElementById('psub');
+  if (total === 0) {
+    pt.textContent = 'Нет задач';
+    ps.textContent = 'Расскажи о планах на день';
+  } else if (done === total) {
+    pt.textContent = 'Всё готово! 🎉';
+    ps.textContent = 'Ты справилась со всеми задачами';
+  } else {
+    const left = total - done;
+    pt.textContent = `${left} ${plural(left,'задача','задачи','задач')} осталось`;
+    ps.textContent = `${done} из ${total} выполнено`;
+  }
+
+  // Список
+  const list = document.getElementById('tlist');
+  if (total === 0) {
+    list.innerHTML = `<div class="empty">
+      <div class="ico">🌅</div>
+      <div class="et">День чистый</div>
+      <div class="es">Нажми микрофон или напиши, что планируешь — я разберу всё по задачам</div>
+    </div>`;
+    return;
+  }
+  list.innerHTML = '';
+  tasks.forEach((t, i) => {
+    const el = document.createElement('div');
+    el.className = 'task' + (t.done ? ' done' : '');
+    el.style.animationDelay = i * 0.04 + 's';
+    el.dataset.idx = i + 1;
+    el.onclick = () => toggleTask(i + 1);
+    el.innerHTML = `
+      <div class="cb">
+        <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
+          <path d="M1 4.5L4.5 8L11 1" stroke="white" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="t-body">
+        <div class="t-text">${esc(t.text)}</div>
+        ${t.time ? `<div class="t-time">🕐 ${esc(t.time)}</div>` : ''}
+      </div>`;
+    list.appendChild(el);
+  });
+}
+
+function plural(n, a, b, c) {
+  const m = n % 100;
+  if (m >= 11 && m <= 19) return c;
+  const r = n % 10;
+  return r === 1 ? a : (r >= 2 && r <= 4) ? b : c;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── Отметить выполненным ─────────────────────────────
+async function toggleTask(num) {
+  if (busy) return;
+  const t = tasks[num - 1];
+  if (!t || t.done) return;
+  busy = true;
+  // Оптимистичное обновление
+  t.done = true;
+  render(tasks);
+  const d = await api('PATCH', '/api/tasks', { taskNum: num });
+  busy = false;
+  if (d?.tasks) render(d.tasks);
+}
+
+// ─── Очистить ─────────────────────────────────────────
+async function clearAll() {
+  if (!confirm('Очистить все задачи на сегодня?')) return;
+  const d = await api('DELETE', '/api/tasks');
+  if (d) { render([]); toast('Список очищен 🗑'); }
+}
+
+// ─── Текстовый ввод ───────────────────────────────────
+function onInp(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  document.getElementById('sendbtn').classList.toggle('on', el.value.trim().length > 0);
+}
+
+function onKD(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); }
+}
+
+async function sendText() {
+  const el = document.getElementById('tinp');
+  const text = el.value.trim();
+  if (!text || busy) return;
+  el.value = ''; el.style.height = 'auto';
+  document.getElementById('sendbtn').classList.remove('on');
+  await process(text, null);
+}
+
+// ─── Голосовая запись ─────────────────────────────────
+async function toggleRec() {
+  if (mr && mr.state === 'recording') stopRec();
+  else startRec();
+}
+
+async function startRec() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    chunks = [];
+    const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus' : 'audio/webm';
+    mr = new MediaRecorder(stream, { mimeType: mime });
+    mr.ondataavailable = e => chunks.push(e.data);
+    mr.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(chunks, { type: mime });
+      await process(null, blob);
+    };
+    mr.start();
+    // UI
+    document.getElementById('micbtn').classList.add('on');
+    document.getElementById('recbar').classList.add('on');
+    recSec = 0;
+    recTmr = setInterval(() => {
+      recSec++;
+      const m = Math.floor(recSec / 60), s = recSec % 60;
+      document.getElementById('rectm').textContent = m + ':' + String(s).padStart(2,'0');
+      if (recSec >= 90) stopRec(); // авто-стоп на 90 сек
+    }, 1000);
+  } catch { toast('Нет доступа к микрофону 🎙'); }
+}
+
+function stopRec() {
+  if (mr) mr.stop();
+  clearInterval(recTmr);
+  document.getElementById('micbtn').classList.remove('on');
+  document.getElementById('recbar').classList.remove('on');
+}
+
+// ─── Обработка ввода ─────────────────────────────────
+async function process(text, audioBlob) {
+  if (busy) return;
+  busy = true;
+  toast(audioBlob ? '🎧 Распознаю голос…' : '🤔 Разбираю задачи…');
+
+  try {
+    let body;
+    if (audioBlob) {
+      const ab = await audioBlob.arrayBuffer();
+      const bytes = new Uint8Array(ab);
+      let bin = '';
+      for (let i = 0; i < bytes.length; i += 8192)
+        bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+      body = { audioBase64: btoa(bin), mimeType: audioBlob.type };
+    } else {
+      body = { text };
+    }
+
+    const d = await api('POST', '/api/tasks', body);
+    if (!d) { busy = false; return; }
+
+    if (d.error) { toast('⚠️ ' + d.error); busy = false; return; }
+
+    if (d.transcribed) toast('📝 Распознано: «' + d.transcribed.slice(0, 60) + (d.transcribed.length > 60 ? '…' : '') + '»');
+    else toast('✅ Задачи добавлены');
+
+    if (d.tasks) render(d.tasks);
+  } catch(e) { toast('Ошибка: ' + e.message); }
+
+  busy = false;
+}
+
+// ─── Тост ─────────────────────────────────────────────
+let toastTmr;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('on');
+  clearTimeout(toastTmr);
+  toastTmr = setTimeout(() => el.classList.remove('on'), 3200);
+}
+</script>
+</body>
+</html>
