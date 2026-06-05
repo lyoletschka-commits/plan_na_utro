@@ -1,7 +1,7 @@
 import { sendMessage, getFile } from './telegram';
 import { transcribeAudio } from './transcribe';
 import { parseTasks } from './llm';
-import { saveTasks, getTodayTasks, markDone, clearTodayTasks, claimAuthSession } from './db';
+import { saveTasks, getAffectedDays, getTasksByDay, getTodayTasks, markDone, clearTodayTasks, claimAuthSession, todayDate } from './db';
 import { formatTaskList } from './format';
 
 interface TelegramMessage {
@@ -90,16 +90,33 @@ export async function handleMessage(msg: TelegramMessage): Promise<void> {
     }
 
     await sendMessage(chatId, '🤔 Разбираю задачи...');
-    const tasks = await parseTasks(userInput);
+    const parsed = await parseTasks(userInput);
 
-    if (tasks.length === 0) {
+    if (parsed.length === 0) {
       await sendMessage(chatId, 'Не удалось найти задачи в сообщении. Попробуй описать планы подробнее.');
       return;
     }
 
-    await saveTasks(userId, tasks);
-    const allTasks = await getTodayTasks(userId);
-    await sendMessage(chatId, `Добавлено задач: ${tasks.length} 🎯\n\n${formatTaskList(allTasks)}`);
+    const today = todayDate();
+    const affectedDays = getAffectedDays(parsed, today);
+    await saveTasks(userId, parsed);
+
+    // Если задачи попали на разные дни — показать по каждому
+    let allTasks;
+    if (affectedDays.length === 1 && affectedDays[0] === today) {
+      allTasks = await getTodayTasks(userId);
+    } else {
+      // Показать задачи первого затронутого дня
+      allTasks = await getTasksByDay(userId, affectedDays[0]);
+    }
+    const dayInfo = affectedDays.length > 1 || affectedDays[0] !== today
+      ? ` (${affectedDays.map(d => {
+          const dt = new Date(d + 'T12:00:00');
+          const mn = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+          return `${dt.getDate()} ${mn[dt.getMonth()]}`;
+        }).join(', ')})`
+      : '';
+    await sendMessage(chatId, `Добавлено задач: ${parsed.length}${dayInfo} 🎯\n\n${formatTaskList(allTasks)}`);
 
   } catch (err) {
     console.error('handleMessage error:', JSON.stringify(err));

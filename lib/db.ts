@@ -21,12 +21,24 @@ export function todayDate(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-export async function saveTasks(userId: number, tasks: ParsedTask[], day?: string): Promise<void> {
+export async function saveTasks(userId: number, tasks: ParsedTask[], defaultDay?: string): Promise<void> {
   const supabase = getClient();
-  const d = day ?? todayDate();
-  const rows = tasks.map(t => ({ user_id: userId, text: t.text, time: t.time ?? null, day: d, done: false }));
+  const fallback = defaultDay ?? todayDate();
+  const rows = tasks.map(t => ({
+    user_id: userId,
+    text: t.text,
+    time: t.time ?? null,
+    day: t.date ?? fallback,   // используем дату из LLM если есть
+    done: false,
+  }));
   const { error } = await supabase.from('tasks').insert(rows);
   if (error) throw new Error(`saveTasks: ${JSON.stringify(error)}`);
+}
+
+// Возвращает уникальные дни, на которые были сохранены задачи
+export function getAffectedDays(tasks: ParsedTask[], defaultDay: string): string[] {
+  const days = new Set(tasks.map(t => t.date ?? defaultDay));
+  return [...days];
 }
 
 export async function getTodayTasks(userId: number): Promise<Task[]> {

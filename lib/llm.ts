@@ -3,13 +3,27 @@ import { env } from './env';
 export interface ParsedTask {
   text: string;
   time: string | null;
+  date: string | null; // YYYY-MM-DD если указан конкретный день, иначе null
 }
 
-const SYSTEM_PROMPT = `Ты помощник утреннего планирования. Пользователь описывает свои планы на день — голосом или текстом.
-Твоя задача: извлечь список задач и вернуть JSON-массив объектов {text, time}.
-- text: краткое описание задачи (на русском, повелительное наклонение или инфинитив)
-- time: время в формате HH:MM или null если не указано
-Верни ТОЛЬКО JSON-массив без пояснений. Пример: [{"text":"Позвонить врачу","time":"10:00"},{"text":"Купить продукты","time":null}]`;
+function buildSystemPrompt(): string {
+  const now = new Date();
+  // Дата в локальном времени сервера (UTC)
+  const y = now.getUTCFullYear();
+  const m = String(now.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(now.getUTCDate()).padStart(2, '0');
+  const todayStr = `${y}-${m}-${d}`;
+  const wd = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'][now.getUTCDay()];
+
+  return `Сегодня ${todayStr} (${wd}).
+Ты помощник планирования. Пользователь описывает задачи — голосом или текстом.
+Извлеки список задач и верни JSON-массив объектов {text, time, date}.
+- text: краткое описание задачи (русский, инфинитив или повелительное)
+- time: время HH:MM или null
+- date: если пользователь указал день («в пятницу», «завтра», «послезавтра», «15 июня», «на следующей неделе в среду» и т.д.) — вычисли точную дату YYYY-MM-DD относительно сегодня. Если день не указан — null.
+Верни ТОЛЬКО JSON-массив без пояснений.
+Пример: [{"text":"Купить продукты","time":null,"date":null},{"text":"Встреча с врачом","time":"15:00","date":"2026-06-13"}]`;
+}
 
 export async function parseTasks(userMessage: string): Promise<ParsedTask[]> {
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -22,7 +36,7 @@ export async function parseTasks(userMessage: string): Promise<ParsedTask[]> {
       model: 'llama-3.3-70b-versatile',
       temperature: 0.3,
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: buildSystemPrompt() },
         { role: 'user', content: userMessage },
       ],
     }),
@@ -38,7 +52,13 @@ export async function parseTasks(userMessage: string): Promise<ParsedTask[]> {
 
   try {
     const match = content.match(/\[[\s\S]*\]/);
-    return JSON.parse(match ? match[0] : content) as ParsedTask[];
+    const tasks = JSON.parse(match ? match[0] : content) as ParsedTask[];
+    // Валидация date: должна быть YYYY-MM-DD или null
+    return tasks.map(t => ({
+      text: t.text,
+      time: t.time ?? null,
+      date: (typeof t.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(t.date)) ? t.date : null,
+    }));
   } catch {
     throw new Error(`Не удалось разобрать ответ LLM: ${content}`);
   }

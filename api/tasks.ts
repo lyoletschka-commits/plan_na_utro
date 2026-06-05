@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { verifyToken } from '../lib/jwt';
-import { getTasksByDay, getWeekTasks, getTasksRange, saveTasks, markDone, clearTodayTasks, deleteTask, todayDate } from '../lib/db';
+import { getTasksByDay, getWeekTasks, getTasksRange, saveTasks, getAffectedDays, markDone, clearTodayTasks, deleteTask, todayDate } from '../lib/db';
 import { parseTasks } from '../lib/llm';
 import { transcribeBuffer } from '../lib/transcribe';
 
@@ -59,9 +59,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!input.trim()) { res.status(400).json({ error: 'Нет данных' }); return; }
       const parsed = await parseTasks(input);
       if (parsed.length === 0) { res.status(422).json({ error: 'Задачи не найдены' }); return; }
+      const affectedDays = getAffectedDays(parsed, day);
       await saveTasks(userId, parsed, day);
       const tasks = await getTasksByDay(userId, day);
-      res.json({ tasks, transcribed: body.audioBase64 ? input : undefined });
+      res.json({ tasks, transcribed: body.audioBase64 ? input : undefined, affectedDays });
 
     } else if (req.method === 'PATCH') {
       const { taskNum, day } = req.body as { taskNum: number; day?: string };

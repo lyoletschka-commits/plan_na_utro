@@ -812,14 +812,31 @@ async function processInput(text,blob){
     const d=await apiCall('POST','/api/tasks',body);
     if(!d){busy=false;return;}
     if(d.error){toast('⚠️ '+d.error);busy=false;return;}
-    if(d.transcribed) toast('📝 «'+d.transcribed.slice(0,55)+(d.transcribed.length>55?'…':'')+'»');
-    else toast('✅ Задачи добавлены в '+formatDayShort(selectedDay));
-    if(d.tasks){
-      cache[selectedDay]=d.tasks;
-      meta[selectedDay]={total:d.tasks.length,done:d.tasks.filter(x=>x.done).length};
-      renderWeekCols();
-      renderMonthCal();
-      renderMonthsList();
+    if(d.transcribed) toast('📝 «'+d.transcribed.slice(0,50)+(d.transcribed.length>50?'…':'')+'»');
+
+    // Обновляем кэш для всех дней куда попали задачи
+    const affected = d.affectedDays || [selectedDay];
+    // Сбросить кэш затронутых дней и перезагрузить
+    affected.forEach(day => { delete cache[day]; delete meta[day]; });
+    await ensureWeekLoaded(weekStart);
+
+    // Тост с информацией о днях
+    if(!d.transcribed){
+      if(affected.length===1 && affected[0]===selectedDay){
+        toast('✅ Задачи добавлены');
+      } else {
+        const days=affected.map(formatDayShort).join(', ');
+        toast('✅ Добавлено: '+days);
+      }
+    }
+
+    renderWeekCols();
+    renderMonthCal();
+    renderMonthsList();
+
+    // Если задачи попали в другой день — переключить на него
+    if(affected.length===1 && affected[0]!==selectedDay){
+      setTimeout(()=>selectDay(affected[0]),400);
     }
   }catch(e){toast('Ошибка: '+e.message);}
   busy=false;
