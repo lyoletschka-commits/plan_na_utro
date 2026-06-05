@@ -261,7 +261,25 @@
       <div class="l-title">Утренний план</div>
       <div class="l-sub" style="margin-top:8px">Голосом или текстом — разберу твой день и сохраню задачи</div>
     </div>
-    <div id="tg-wrap"><div style="color:var(--text3);font-size:14px">Загружаю виджет входа…</div></div>
+    <div id="tg-wrap"><div style="color:var(--text3);font-size:14px">Загружаю виджет…</div></div>
+
+    <!-- Кнопка-резерв: OAuth-редирект (работает всегда) -->
+    <a id="tg-btn" href="#" onclick="telegramRedirect()" style="
+      display:none;align-items:center;gap:10px;
+      background:#2481cc;color:#fff;text-decoration:none;
+      padding:13px 24px;border-radius:14px;font-size:16px;font-weight:600;
+      box-shadow:0 4px 20px rgba(36,129,204,.4);
+      transition:transform .15s ease,opacity .15s ease;
+    " onmousedown="this.style.transform='scale(.97)'"
+       onmouseup="this.style.transform=''"
+       ontouchstart="this.style.transform='scale(.97)'"
+       ontouchend="this.style.transform=''">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.94 8.19l-2.02 9.52c-.15.67-.54.83-1.09.52l-3-2.21-1.45 1.39c-.16.16-.3.3-.61.3l.22-3.08 5.6-5.06c.24-.22-.05-.34-.38-.12L6.27 14.4l-2.97-.93c-.64-.2-.66-.64.14-.95l11.6-4.47c.53-.2 1 .13.9.14z"/>
+      </svg>
+      Войти через Telegram
+    </a>
+
     <div class="l-hint">Твои задачи синхронизируются с ботом <strong>@plan_na_utro_bot</strong></div>
   </div>
 
@@ -361,17 +379,36 @@ let mr = null, chunks = [], recTmr = null, recSec = 0, busy = false;
 // ─── Инит ────────────────────────────────────────────
 window.addEventListener('load', () => {
   setGreeting(); setDate();
-  if (TOKEN && USER) showMain();
-  else {
-    // Проверим — если виджет не загрузился за 4 сек, покажем сообщение
-    setTimeout(() => {
-      const w = document.getElementById('tg-wrap');
-      if (!w.querySelector('iframe,button')) {
-        w.innerHTML = '<div style="color:var(--text3);font-size:13px;text-align:center">Виджет Telegram не загрузился.<br>Открой <a href="https://t.me/plan_na_utro_bot" style="color:var(--blue)">@plan_na_utro_bot</a> и используй бота.</div>';
-      }
-    }, 4000);
+
+  // Обработка OAuth-редиректа от Telegram
+  const params = new URLSearchParams(location.search);
+  const tgResult = params.get('tgAuthResult');
+  if (tgResult) {
+    history.replaceState({}, '', location.pathname); // убираем параметр из URL
+    try {
+      const userData = JSON.parse(atob(tgResult.replace(/-/g,'+').replace(/_/g,'/')));
+      doAuth(userData);
+    } catch(e) { toast('Ошибка обработки данных Telegram'); }
+    return;
   }
+
+  if (TOKEN && USER) { showMain(); return; }
+
+  // Если виджет не появился за 5 сек — показываем кнопку-резерв
+  setTimeout(() => {
+    const w = document.getElementById('tg-wrap');
+    if (!w.querySelector('iframe')) {
+      w.style.display = 'none';
+      document.getElementById('tg-btn').style.display = 'flex';
+    }
+  }, 5000);
 });
+
+function telegramRedirect() {
+  const origin = encodeURIComponent(location.origin);
+  const ret = encodeURIComponent(location.href);
+  location.href = `https://oauth.telegram.org/auth?bot_id=8811530332&origin=${origin}&return_to=${ret}`;
+}
 
 function setGreeting() {
   const h = new Date().getHours();
